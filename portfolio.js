@@ -4,11 +4,93 @@ var secret = '';
 
 /**************************** DO NOT MODIFY BELOW ****************************/
 
+/*
+
+openLoan:
+
+{ BTC: 
+   [ { id: 320223094,
+       rate: '0.00018700',
+       amount: '0.00142481',
+       duration: 2,
+       autoRenew: 0,
+       date: '2017-01-02 19:44:00' } ],
+  ETH: 
+   [ { id: 320223083,
+       rate: '0.00006000',
+       amount: '1.06123745',
+       duration: 2,
+       autoRenew: 0,
+       date: '2017-01-02 19:43:59' },
+     { id: 320223081,
+       rate: '0.00005990',
+       amount: '1.06123745',
+       duration: 2,
+       autoRenew: 0,
+       date: '2017-01-02 19:43:59' } ] }
+
+
+activeLoan:
+
+{ provided: 
+   [ { id: 139577530,
+       currency: 'ETH',
+       rate: '0.00005900',
+       amount: '0.70749164',
+       duration: 2,
+       autoRenew: 0,
+       date: '2017-01-02 19:52:44',
+       fees: '0.00000002' },
+     { id: 139575957,
+       currency: 'BTC',
+       rate: '0.00013166',
+       amount: '0.01138998',
+       duration: 2,
+       autoRenew: 0,
+       date: '2017-01-02 19:49:40',
+       fees: '0.00000000' } ],
+  used: [] }
+
+lendingHistory:
+
+[ { id: 247179977,
+    currency: 'ETH',
+    rate: '0.00006000',
+    amount: '7.67100001',
+    duration: '1.35490000',
+    interest: '0.00062363',
+    fee: '-0.00009354',
+    earned: '0.00053009',
+    open: '2017-01-01 11:31:52',
+    close: '2017-01-02 20:02:59' } ]
+
+*/
+
+var Promises = require('promise');
+
 var Poloniex = require('./poloniex.js');
 var poloniex = new Poloniex(key, secret);
 
 var start = 1388534400;
 var end = new Date().getTime() / 1000;
+
+function checkWallet(lendingWallet, currency) {
+	return new Promise((resolve) => {
+		if (lendingWallet[currency] === undefined || lendingWallet[currency] === null) {
+			lendingWallet[currency] = {
+				balance: 0,
+				amount: 0,
+				interest: 0,
+				duration: 0,
+				count: 0
+			};
+
+			resolve();
+		} else {
+			resolve();
+		}
+	});
+}
 
 function openLoans(callback) {
 	poloniex.returnOpenLoanOffers(function (err, data) {
@@ -31,82 +113,89 @@ function lendingHistory(callback) {
 	});
 }
 
-var totalETHLendingBalance = 0;
-var totalBTCLendingBalance = 0;
 
-openLoans(function (data) {
-	if (data.ETH !== undefined && data.ETH !== null) {
-		for (var i = 0; i < data.ETH.length; i++) {
-    		totalETHLendingBalance += parseFloat(data.ETH[i].amount);
-    	}
-	}
 
-	if (data.BTC !== undefined && data.BTC !== null) {
-		for (var i = 0; i < data.BTC.length; i++) {
-    		totalBTCLendingBalance += parseFloat(data.BTC[i].amount);
-    	}
-	}
+var lendingWallet = {};
+
+var p1 = new Promise((resolve, reject) => {
+
+	openLoans(function (data) {
+
+		var p = Object.keys(data).map(currency => {
+
+			checkWallet(lendingWallet, currency).then(() => {
+
+				data[currency].map(openLoan => {
+					lendingWallet[currency].balance += parseFloat(openLoan.amount);
+				});
+
+			});
+
+		});
+
+		Promises.all(p).then(() => { console.log('Open loans...'); resolve() });
+
+	});
+
+}); 
+
+
+var p2 = new Promise((resolve, reject) => {
 
 	activeLoans(function (res) {
-		for (var i = 0; i < res.provided.length; i++) {
-        	if (res.provided[i].currency === 'ETH') {
-        		totalETHLendingBalance += parseFloat(res.provided[i].amount);
-        	}
-          	else if (res.provided[i].currency === 'BTC') {
-        		totalBTCLendingBalance += parseFloat(res.provided[i].amount);
-        	}
-    	}
 
-    	lendingHistory(function (history) {
-    		var totalETHAmount = 0;
-    		var totalETHInterest = 0;
-    		var totalETHDuration = 0;
-    		var totalETHCount = 0;
+		var p = res.provided.map(activeLoan => {
 
-    		var totalBTCAmount = 0;
-    		var totalBTCInterest = 0;
-    		var totalBTCDuration = 0;
-    		var totalBTCCount = 0;
+			checkWallet(lendingWallet, activeLoan.currency).then(() => {
 
+				lendingWallet[activeLoan.currency].balance += parseFloat(activeLoan.amount);
 
-			for (var i = 0; i < history.length; i++) {
-				var lend = history[i];
+			});
+		});
 
-				if (lend.currency === 'ETH') {
-					totalETHAmount += parseFloat(lend.amount);
-					totalETHInterest += parseFloat(lend.earned);
-					totalETHDuration += ((new Date(lend.close).getTime() / 1000) - (new Date(lend.open).getTime() / 1000));
-					totalETHCount += 1;
-				}
-				else if (lend.currency === 'BTC') {
-					totalBTCAmount += parseFloat(lend.amount);
-					totalBTCInterest += parseFloat(lend.earned);
-					totalBTCDuration += ((new Date(lend.close).getTime() / 1000) - (new Date(lend.open).getTime() / 1000));
-					totalBTCCount += 1;
-				}
+		Promises.all(p).then(() => { console.log('Active loans... '); resolve() });
 
-				if (i === history.length - 1) {
-					console.log('');
-					console.log('ETH Return: ' + (totalETHInterest / totalETHLendingBalance) * 100 + ' %');
-					console.log('Number of ETH Loans Made: ' + totalETHCount + ' Transactions');
-					console.log('Total ETH Interest Earned: ' + totalETHInterest + ' ETH');
-					console.log('Total ETH Lending Balance: ' + totalETHLendingBalance + ' ETH');
-					console.log('Total ETH Loan Volume: ' + totalETHAmount + ' ETH');
-					console.log('Average ETH Loan Amount: ' + (totalETHAmount / totalETHCount) + ' ETH');
-					console.log('Average ETH Loan Duration: ' + (totalETHDuration / totalETHCount / 3600) + ' hours');
-					console.log('');
-					console.log('BTC Return: ' + (totalBTCInterest / totalBTCLendingBalance) * 100 + ' %');
-					console.log('Number of BTC Loans Made: ' + totalBTCCount + ' Transactions');
-					console.log('Total BTC Interest Earned: ' + totalBTCInterest + ' BTC');
-					console.log('Total BTC Lending Balance: ' + totalBTCLendingBalance + ' BTC');
-					console.log('Total BTC Loan Volume: ' + totalBTCAmount + ' BTC');
-					console.log('Average BTC Loan Amount: ' + (totalBTCAmount / totalBTCCount) + ' BTC');
-					console.log('Average BTC Loan Duration: ' + (totalBTCDuration / totalBTCCount / 3600) + ' hours');
-					console.log('');
-				}
-			}
-
-    	});
 	});
+
 });
 
+var p3 = new Promise((resolve, reject) => {
+
+	lendingHistory(function (history) {
+
+		var p = history.map(lend => {
+
+			checkWallet(lendingWallet, lend.currency).then(() => {
+
+				lendingWallet[lend.currency].amount += parseFloat(lend.amount);
+				lendingWallet[lend.currency].interest += parseFloat(lend.earned);
+				lendingWallet[lend.currency].duration += ((new Date(lend.close).getTime() / 1000) - (new Date(lend.open).getTime() / 1000));
+				lendingWallet[lend.currency].count += 1;
+
+			});
+
+		});
+
+		Promises.all(p).then(() => { console.log('Lending history... '); resolve() });
+
+	});
+
+});
+
+Promises.all([p3, p2, p1]).then(() => {
+
+	Object.keys(lendingWallet).map(currency => {
+
+		console.log('');
+		console.log(currency + ' Return: ' + (lendingWallet[currency].interest / (lendingWallet[currency].balance - lendingWallet[currency].interest)) * 100 + ' %');
+		console.log('Number of ' + currency + ' Loans Made: ' + lendingWallet[currency].count + ' Transactions');
+		console.log('Total ' + currency + ' Interest Earned: ' + lendingWallet[currency].interest + ' ETH');
+		console.log('Total ' + currency + ' Lending Balance: ' + lendingWallet[currency].balance + ' ETH');
+		console.log('Total ' + currency + ' Loan Volume: ' + lendingWallet[currency].amount + ' ETH');
+		console.log('Average ' + currency + ' Loan Amount: ' + (lendingWallet[currency].amount / lendingWallet[currency].count) + ' ETH');
+		console.log('Average ' + currency + ' Loan Duration: ' + (lendingWallet[currency].duration / lendingWallet[currency].count / 3600) + ' hours');
+		console.log('');
+
+	});
+
+});
