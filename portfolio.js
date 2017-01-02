@@ -188,11 +188,11 @@ Promises.all([p3, p2, p1]).then(() => {
 
 		console.log('');
 		console.log(currency + ' Return: ' + (lendingWallet[currency].interest / (lendingWallet[currency].balance - lendingWallet[currency].interest)) * 100 + ' %');
-		console.log('Number of ' + currency + ' Loans Made: ' + lendingWallet[currency].count + ' Transactions');
-		console.log('Total ' + currency + ' Interest Earned: ' + lendingWallet[currency].interest + ' ETH');
-		console.log('Total ' + currency + ' Lending Balance: ' + lendingWallet[currency].balance + ' ETH');
-		console.log('Total ' + currency + ' Loan Volume: ' + lendingWallet[currency].amount + ' ETH');
-		console.log('Average ' + currency + ' Loan Amount: ' + (lendingWallet[currency].amount / lendingWallet[currency].count) + ' ETH');
+		console.log('Number of ' + currency + ' Loans Made: ' + lendingWallet[currency].count + ' transactions');
+		console.log('Total ' + currency + ' Interest Earned: ' + lendingWallet[currency].interest + ' ' + currency);
+		console.log('Total ' + currency + ' Lending Balance: ' + lendingWallet[currency].balance + ' ' + currency);
+		console.log('Total ' + currency + ' Loan Volume: ' + lendingWallet[currency].amount + ' ' + currency);
+		console.log('Average ' + currency + ' Loan Amount: ' + (lendingWallet[currency].amount / lendingWallet[currency].count) + ' ' + currency);
 		console.log('Average ' + currency + ' Loan Duration: ' + (lendingWallet[currency].duration / lendingWallet[currency].count / 3600) + ' hours');
 		console.log('');
 
